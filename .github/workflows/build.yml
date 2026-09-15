@@ -17,7 +17,7 @@ jobs:
     runs-on: macos-latest
     steps:
       - name: Check out
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Show toolchain
         run: |
@@ -39,7 +39,7 @@ jobs:
         run: ditto -c -k --sequesterRsrc --keepParent build/Debrowse.app Debrowse.zip
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: Debrowse
           path: Debrowse.zip
@@ -54,20 +54,40 @@ jobs:
       contents: write
     steps:
       - name: Download artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: Debrowse
 
-      - name: Name and checksum
+      - name: Name, checksum and notes
         run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
           mv Debrowse.zip "Debrowse-${GITHUB_REF_NAME}.zip"
           shasum -a 256 Debrowse-*.zip > SHA256SUMS.txt
           cat SHA256SUMS.txt
+          cat > RELEASE_NOTES.md <<NOTES
+          Menu bar app for switching the default browser on macOS 13 and later. Universal binary (Apple silicon and Intel).
+
+          ## Install
+
+          1. Download \`Debrowse-${GITHUB_REF_NAME}.zip\` below and unzip it.
+          2. Move \`Debrowse.app\` to \`/Applications\` and open it.
+          3. macOS blocks the first launch because the app is not notarised. Go to **System Settings › Privacy & Security** and click **Open Anyway**, or clear the quarantine flag:
+
+             \`\`\`sh
+             xattr -dr com.apple.quarantine /Applications/Debrowse.app
+             \`\`\`
+
+          Verify the download against \`SHA256SUMS.txt\` if you like.
+
+          NOTES
 
       - name: Create GitHub release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
+          name: Debrowse ${{ env.VERSION }}
+          body_path: RELEASE_NOTES.md
+          generate_release_notes: true
           files: |
             Debrowse-*.zip
             SHA256SUMS.txt
-          generate_release_notes: true

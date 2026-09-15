@@ -113,7 +113,13 @@ git push origin main --follow-tags
 ```
 
 The workflow builds a universal binary, runs the smoke test, and attaches the zip and its checksum
-to a GitHub release with generated notes.
+to a GitHub release with install notes and a generated changelog. If a tag push does not start a
+run (GitHub occasionally skips tags pushed together with brand-new workflow files), trigger it by
+hand:
+
+```sh
+gh workflow run build.yml --ref v1.1.0
+```
 
 ## Licence
 
