@@ -1,0 +1,73 @@
+name: Build
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build universal app
+    runs-on: macos-latest
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+
+      - name: Show toolchain
+        run: |
+          sw_vers
+          xcodebuild -version
+          swift --version
+
+      - name: Build
+        run: ARCHS="arm64 x86_64" make build
+
+      - name: Smoke test
+        run: |
+          lipo -info build/Debrowse.app/Contents/MacOS/Debrowse
+          plutil -lint build/Debrowse.app/Contents/Info.plist
+          codesign --verify --deep --strict build/Debrowse.app
+          build/Debrowse.app/Contents/MacOS/Debrowse --list
+
+      - name: Package
+        run: ditto -c -k --sequesterRsrc --keepParent build/Debrowse.app Debrowse.zip
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Debrowse
+          path: Debrowse.zip
+          if-no-files-found: error
+
+  release:
+    name: Publish release
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: Debrowse
+
+      - name: Name and checksum
+        run: |
+          mv Debrowse.zip "Debrowse-${GITHUB_REF_NAME}.zip"
+          shasum -a 256 Debrowse-*.zip > SHA256SUMS.txt
+          cat SHA256SUMS.txt
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            Debrowse-*.zip
+            SHA256SUMS.txt
+          generate_release_notes: true
