@@ -11,6 +11,10 @@ whatever browser is currently the default; click it, pick another browser, confi
 prompt (or let Debrowse press it for you), done. Handy when you want "Chrome for the next hour,
 Safari afterwards" without digging through System Settings.
 
+<p align="center">
+  <img src="docs/demo.gif" width="328" alt="The Debrowse menu open in the macOS menu bar, listing installed browsers with Safari ticked and Google Chrome highlighted">
+</p>
+
 ## Install
 
 Requires macOS 13 Ventura or newer. The release build is universal (Apple silicon and Intel).

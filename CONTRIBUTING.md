@@ -52,6 +52,7 @@ Sources/Debrowse/
 Resources/Info.plist              bundle metadata (LSUIElement = true)
 Scripts/build-app.sh              swiftc build + bundle assembly + signing
 Scripts/make-icon.swift           renders AppIcon.iconset -> .icns
+docs/                             README media
 .github/workflows/                CI: universal build on every push, GitHub release on v* tags
 Makefile                          thin wrapper over the build script
 ```
