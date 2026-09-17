@@ -1,5 +1,35 @@
-.build/
+# Build output
 build/
-*.xcodeproj
+.build/
+DerivedData/
+*.o
+*.dSYM/
+
+# Swift Package Manager / Xcode
+.swiftpm/
+*.xcodeproj/
+*.xcworkspace/
+xcuserdata/
+*.xcuserstate
+*.xcscmblueprint
+*.hmap
+*.ipa
+*.pbxuser
+*.mode1v3
+*.mode2v3
+*.perspectivev3
+*.moved-aside
+timeline.xctimeline
+playground.xcworkspace
+
+# macOS
 .DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Local tooling and scratch
 .omc/
+Scripts/record-demo.sh
+Scripts/demo-driver.swift
+docs/menu.png
