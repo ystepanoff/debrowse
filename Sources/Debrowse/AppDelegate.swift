@@ -4,6 +4,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var statusItem: NSStatusItem?
     private let menu = NSMenu()
     private let manager = BrowserManager()
+    private let autoAccepter = ConfirmationAutoAccepter()
 
     private var browsers: [Browser] = []
     private var currentDefault: Browser?
@@ -166,6 +167,30 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
         menu.addItem(launchAtLogin)
 
+        let skipConfirmation = NSMenuItem(title: "Skip Confirmation Dialogue", action: #selector(toggleSkipConfirmation(_:)), keyEquivalent: "")
+        skipConfirmation.target = self
+        switch (Preferences.skipConfirmation, AccessibilityPermission.isGranted) {
+        case (false, _):
+            skipConfirmation.state = .off
+            skipConfirmation.toolTip = "Press “Use <browser>” on the system prompt for you. Needs Accessibility permission."
+        case (true, true):
+            skipConfirmation.state = .on
+        case (true, false):
+            skipConfirmation.state = .mixed
+            skipConfirmation.toolTip = "Waiting for Accessibility permission in System Settings › Privacy & Security › Accessibility. "
+                + "Click to open it, or hold ⌥ and click to turn this off."
+        }
+        menu.addItem(skipConfirmation)
+
+        if skipConfirmation.state == .mixed {
+            // Shown in place of the item above while ⌥ is held: the way out of the waiting state.
+            let stopWaiting = NSMenuItem(title: "Stop Waiting for Accessibility Permission", action: #selector(disableSkipConfirmation(_:)), keyEquivalent: "")
+            stopWaiting.target = self
+            stopWaiting.keyEquivalentModifierMask = .option
+            stopWaiting.isAlternate = true
+            menu.addItem(stopWaiting)
+        }
+
         let showIcon = NSMenuItem(title: "Show Browser Icon in Menu Bar", action: #selector(toggleShowBrowserIcon(_:)), keyEquivalent: "")
         showIcon.target = self
         showIcon.state = Preferences.showBrowserIcon ? .on : .off
@@ -221,8 +246,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         guard !alreadyDefault, !isChangingDefault else { return }
 
         isChangingDefault = true
+        if Preferences.skipConfirmation && AccessibilityPermission.isGranted {
+            autoAccepter.start(for: browser, replacing: [currentDefault, currentHTTPSDefault].compactMap { $0 })
+        }
         manager.setDefault(browser) { [weak self] outcome in
             guard let self else { return }
+            self.autoAccepter.stop()
             self.isChangingDefault = false
             self.refreshDefaults()
             self.updateStatusItem()
@@ -258,13 +287,38 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
     }
 
+    @objc private func toggleSkipConfirmation(_ sender: NSMenuItem) {
+        switch (Preferences.skipConfirmation, AccessibilityPermission.isGranted) {
+        case (false, true):
+            Preferences.skipConfirmation = true
+        case (false, false):
+            Preferences.skipConfirmation = true
+            AccessibilityPermission.request()
+        case (true, true):
+            disableSkipConfirmation(sender)
+        case (true, false):
+            // Waiting for the permission: take the user to where it is granted.
+            openSystemSettings(pane: AccessibilityPermission.settingsPaneURL)
+        }
+    }
+
+    @objc private func disableSkipConfirmation(_ sender: NSMenuItem) {
+        Preferences.skipConfirmation = false
+        // A switch may be under way; do not press anything on its behalf any more.
+        autoAccepter.stop()
+    }
+
     @objc private func toggleShowBrowserIcon(_ sender: NSMenuItem) {
         Preferences.showBrowserIcon.toggle()
         updateStatusItem()
     }
 
     @objc private func openSystemSettings(_ sender: NSMenuItem) {
-        if !NSWorkspace.shared.open(Self.systemSettingsURL) {
+        openSystemSettings(pane: Self.systemSettingsURL)
+    }
+
+    private func openSystemSettings(pane: URL) {
+        if !NSWorkspace.shared.open(pane) {
             NSWorkspace.shared.open(Self.systemSettingsAppURL)
         }
     }

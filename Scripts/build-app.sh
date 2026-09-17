@@ -52,6 +52,7 @@ for ARCH in $ARCHS; do
     "${OPT_FLAGS[@]}" \
     -module-name "$APP_NAME" \
     -framework AppKit \
+    -framework ApplicationServices \
     -framework ServiceManagement \
     "${SOURCES[@]}" \
     -o "$OUT"
