@@ -14,6 +14,7 @@ let package = Package(
             path: "Sources/Debrowse",
             linkerSettings: [
                 .linkedFramework("AppKit"),
+                .linkedFramework("ApplicationServices"),
                 .linkedFramework("ServiceManagement"),
             ]
         )

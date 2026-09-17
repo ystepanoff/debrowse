@@ -8,8 +8,8 @@
 
 A tiny macOS menu bar app for switching the default web browser. The menu bar shows the icon of
 whatever browser is currently the default; click it, pick another browser, confirm the system
-prompt, done. Handy when you want "Chrome for the next hour, Safari afterwards" without digging
-through System Settings.
+prompt (or let Debrowse press it for you), done. Handy when you want "Chrome for the next hour,
+Safari afterwards" without digging through System Settings.
 
 ## Install
 
@@ -29,16 +29,25 @@ Requires macOS 13 Ventura or newer. The release build is universal (Apple silico
 Every release ships with a `SHA256SUMS.txt` you can check the download against.
 
 **Upgrading:** each build carries a fresh ad-hoc signature, so macOS may treat an upgraded copy as
-a new app for Login Items. If "Launch at Login" shows unchecked after an upgrade, toggle it on again.
+a new app for Login Items and Accessibility. If "Launch at Login" shows unchecked after an upgrade,
+toggle it on again. If "Skip Confirmation Dialogue" shows a dash, switch Debrowse off and on again
+under System Settings › Privacy & Security › Accessibility; if that does not help, remove the
+Debrowse entry there with "−" and add the new build.
 
 ## Using it
 
 - **Menu bar icon** shows the current default browser. Toggle "Show Browser Icon in Menu Bar"
   off to get a neutral globe instead.
 - **Pick a browser** from the list. macOS shows its own confirmation dialogue ("Use Firefox" / "Keep
-  Safari"); accept it and both `http` and `https` links switch to the new browser. This dialogue is
-  a system requirement and cannot be suppressed by any app. Declining it simply leaves things as
-  they were.
+  Safari"); accept it and both `http` and `https` links switch to the new browser. Declining it
+  simply leaves things as they were.
+- **Skip Confirmation Dialogue** has Debrowse press "Use Firefox" for you, so a switch is a single
+  click. No app can suppress that dialogue, so Debrowse operates it through the Accessibility API
+  instead: the first time you turn the option on, macOS asks you to allow Debrowse under System
+  Settings › Privacy & Security › Accessibility, and the item shows a dash until you do. Clicking
+  the dash opens that pane; holding ⌥ while clicking turns the option off instead. Debrowse only
+  ever presses the button naming the browser you just picked, and only in the seconds after you
+  pick it; if it cannot find that button, the dialogue stays for you to answer.
 - If `http` and `https` ever point at different browsers (possible if a second prompt is declined,
   or via other tools), the header says so, the browsers involved show a dash instead of a check,
   and picking the one you want repairs it.
@@ -56,8 +65,10 @@ icon and no window; quit it from its menu.
 Debrowse asks macOS which installed apps can open both `http` and `https` links and lists those.
 It is close to what System Settings shows, though some non-browser apps register for web links and
 will appear too. Switching goes through the same system API that System Settings uses, which is
-why macOS always asks you to confirm. Afterwards the app re-reads the actual handlers rather than
-trusting the API's answer, so what the menu shows is what your Mac will really do.
+why macOS always asks you to confirm; with "Skip Confirmation Dialogue" on, Debrowse watches for
+that dialogue and presses its "Use" button through the Accessibility API. Afterwards the app
+re-reads the actual handlers rather than trusting the API's answer, so what the menu shows is what
+your Mac will really do.
 
 ## Build from source
 

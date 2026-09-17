@@ -34,23 +34,26 @@ The script compiles all Swift sources with `swiftc` in Swift 5 language mode aga
 deployment target, assembles the bundle from `Resources/Info.plist`, renders the app icon with
 `Scripts/make-icon.swift` (an `.iconset` turned into `.icns` by `iconutil`), and ad-hoc signs the
 result. Ad-hoc signing means each build has a new code signature; that is fine for local use and
-is what the released zips ship with too.
+is what the released zips ship with too. It also means permissions tied to the signature do not
+survive a rebuild: the designated requirement is a bare `cdhash`, so macOS treats a new build as
+untrusted for Accessibility until it is switched off and on again in that pane.
 
 ## Project layout
 
 ```
 Sources/Debrowse/
-  main.swift            app bootstrap (accessory activation policy) and the --list flag
-  AppDelegate.swift     status item, menu construction, actions, deferred work while the menu is open
-  BrowserManager.swift  discover browsers, read/set default via Launch Services
-  Browser.swift         model + icon loading
-  LoginItem.swift       SMAppService wrapper, including the requires-approval state
-  Preferences.swift     UserDefaults-backed settings
-Resources/Info.plist    bundle metadata (LSUIElement = true)
-Scripts/build-app.sh    swiftc build + bundle assembly + signing
-Scripts/make-icon.swift renders AppIcon.iconset -> .icns
-.github/workflows/      CI: universal build on every push, GitHub release on v* tags
-Makefile                thin wrapper over the build script
+  main.swift                      app bootstrap (accessory activation policy) and the --list flag
+  AppDelegate.swift               status item, menu, actions, deferred work while the menu is open
+  BrowserManager.swift            discover browsers, read/set default via Launch Services
+  Browser.swift                   model + icon loading
+  LoginItem.swift                 SMAppService wrapper, including the requires-approval state
+  ConfirmationAutoAccepter.swift  Accessibility permission; auto-presses the system confirmation
+  Preferences.swift               UserDefaults-backed settings
+Resources/Info.plist              bundle metadata (LSUIElement = true)
+Scripts/build-app.sh              swiftc build + bundle assembly + signing
+Scripts/make-icon.swift           renders AppIcon.iconset -> .icns
+.github/workflows/                CI: universal build on every push, GitHub release on v* tags
+Makefile                          thin wrapper over the build script
 ```
 
 ## How it works
@@ -64,6 +67,17 @@ Makefile                thin wrapper over the build script
   triggers the system confirmation. macOS normally updates `https` as part of the same change; if
   it did not, the app sets `https` explicitly (possibly prompting again). The outcome is judged by
   re-reading both handlers, never by trusting the API's error value alone.
+- With "Skip Confirmation Dialogue" on and the Accessibility permission granted,
+  `ConfirmationAutoAccepter` polls CoreServicesUIAgent's windows through `AXUIElement` for the
+  duration of the switch and presses the button whose title contains the target browser's name.
+  On macOS 26.5 the dialogue exposes no default/cancel button attributes, only two `AXButton`
+  children titled "Use “X”" and "Keep “Y”" (older releases are unverified, so the search descends
+  a few levels), so matching is by title and requires exactly two buttons. When both titles contain
+  the target's name (one browser's name contains the other's) the button naming a current handler
+  is dropped, and anything still ambiguous is left alone. The watcher stops when the change
+  completes, or after 20 seconds.
+- The permission itself is surfaced like Launch at Login: a mixed state while it is pending, which
+  opens the Accessibility pane when clicked; an ⌥-click alternate turns the option off instead.
 - The menu is rebuilt in `menuNeedsUpdate`. Anything that must not happen while the menu is
   tracking (rebuilding items, showing an alert) is queued until `menuDidClose`.
 - Launch at Login uses `SMAppService.mainApp`; the `requiresApproval` status is surfaced as a mixed
@@ -108,4 +122,5 @@ gh workflow run build.yml --ref v1.1.0
 ## Reporting issues
 
 Please include your macOS version, the output of `--list`, and which browser you were switching
-from and to. If the system prompt behaved unexpectedly, say whether you accepted or declined it.
+from and to. If the system prompt behaved unexpectedly, say whether you accepted or declined it,
+and whether "Skip Confirmation Dialogue" was on.
